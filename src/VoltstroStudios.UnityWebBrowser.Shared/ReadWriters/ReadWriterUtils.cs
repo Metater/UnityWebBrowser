@@ -3,6 +3,7 @@
 // 
 // This project is under the MIT license. See the LICENSE.md file for more details.
 
+using VoltRpc.IO;
 using VoltRpc.Types;
 
 namespace VoltstroStudios.UnityWebBrowser.Shared.ReadWriters;
@@ -17,5 +18,19 @@ internal static class ReadWriterUtils
         readerWriterManager.AddType(new MouseScrollEventTypeReadWriter());
         readerWriterManager.AddType(new ResolutionTypeReadWriter());
         readerWriterManager.AddType(new ExecuteJsMethodTypeReadWriter());
+        readerWriterManager.AddType(new AudioChannelLayoutTypeReadWriter());
+    }
+
+    private sealed class AudioChannelLayoutTypeReadWriter : TypeReadWriter<AudioChannelLayout>
+    {
+        public override void Write(BufferedWriter writer, AudioChannelLayout channelLayout)
+        {
+            writer.WriteInt((int)channelLayout);
+        }
+
+        public override AudioChannelLayout Read(BufferedReader reader)
+        {
+            return (AudioChannelLayout)reader.ReadInt();
+        }
     }
 }
