@@ -39,6 +39,7 @@ namespace VoltstroStudios.UnityWebBrowser.Core
         public readonly IWebBrowserLogger logger;
 
         public readonly PixelsEventTypeReader pixelsEventTypeReader;
+        public readonly AudioEventTypeReader audioEventTypeReader;
 
         private readonly object threadLock;
         private readonly SynchronizationContext unityThread;
@@ -70,6 +71,9 @@ namespace VoltstroStudios.UnityWebBrowser.Core
 
             pixelsEventTypeReader = new PixelsEventTypeReader(browserClient.nextTextureData);
             ipcClient.TypeReaderWriterManager.AddType(pixelsEventTypeReader);
+
+            audioEventTypeReader = new AudioEventTypeReader();
+            ipcClient.TypeReaderWriterManager.AddType(audioEventTypeReader);
 
             ipcClient.AddService<IEngineControls>();
             ipcClient.AddService<IPopupClientControls>();
@@ -202,6 +206,17 @@ namespace VoltstroStudios.UnityWebBrowser.Core
             ExecuteTask(() => engineProxy.AudioMute(muted));
         }
 
+        public AudioDataEvent GetAudioData()
+        {
+            using (sendEventMarker.Auto())
+            {
+                lock (threadLock)
+                {
+                    return engineProxy.GetAudioData();
+                }
+            }
+        }
+
         public void Connect()
         {
             ipcClient.Connect();
@@ -311,6 +326,21 @@ namespace VoltstroStudios.UnityWebBrowser.Core
         public void ExecuteJsMethod(ExecuteJsMethod executeJsMethod)
         {
             ExecuteOnUnity(() => client.InvokeJsMethod(executeJsMethod));
+        }
+
+        public void AudioStreamStarted(int sampleRate, int channels, AudioChannelLayout channelLayout, int framesPerBuffer)
+        {
+            ExecuteOnUnity(() => client.InvokeAudioStreamStarted(sampleRate, channels, channelLayout, framesPerBuffer));
+        }
+
+        public void AudioStreamStopped()
+        {
+            ExecuteOnUnity(() => client.InvokeAudioStreamStopped());
+        }
+
+        public void AudioStreamError(string message)
+        {
+            ExecuteOnUnity(() => client.InvokeAudioStreamError(message));
         }
 
         #endregion

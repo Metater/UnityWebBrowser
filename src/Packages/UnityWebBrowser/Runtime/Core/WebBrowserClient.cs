@@ -182,6 +182,14 @@ namespace VoltstroStudios.UnityWebBrowser.Core
         public bool noSandbox = false;
 
         /// <summary>
+        ///     Enable streaming browser audio from CEF to Unity.
+        ///     When enabled, audio lifecycle events and PCM data will be exposed via events.
+        /// </summary>
+        [Header("Audio")]
+        [Tooltip("Enable streaming browser audio from CEF to Unity")]
+        public bool enableAudioForwarding = false;
+
+        /// <summary>
         ///     Domains to ignore SSL errors on if <see cref="ignoreSslErrors"/> is enabled
         /// </summary>
         [Tooltip("Domains to ignore SSL errors on if ignoreSSLErrors is enabled")]
@@ -313,6 +321,7 @@ namespace VoltstroStudios.UnityWebBrowser.Core
         private object resizeLock;
         private NativeArray<byte> textureData;
         internal NativeArray<byte> nextTextureData;
+        private SynchronizationContext syncContext;
 
         /// <summary>
         ///     Creates a new <see cref="WebBrowserClient"/> instance
@@ -463,6 +472,7 @@ namespace VoltstroStudios.UnityWebBrowser.Core
 
             //Setup communication manager
             cancellationSource = new CancellationTokenSource();
+            syncContext = SynchronizationContext.Current;
             communicationsManager = new WebBrowserCommunicationsManager(this, cancellationSource);
             communicationsManager.Listen();
             
@@ -580,6 +590,15 @@ namespace VoltstroStudios.UnityWebBrowser.Core
                     Name = "UWB Pixel Data Loop Thread"
                 };
                 pixelDataLoopThread.Start();
+
+                if (enableAudioForwarding)
+                {
+                    Thread audioDataLoopThread = new(AudioDataLoop)
+                    {
+                        Name = "UWB Audio Data Loop Thread"
+                    };
+                    audioDataLoopThread.Start();
+                }
             }
             catch (Exception ex)
             {
@@ -657,6 +676,62 @@ namespace VoltstroStudios.UnityWebBrowser.Core
             markerLoadTextureApply.Begin();
             texture.Apply(false);
             markerLoadTextureApply.End();
+        }
+
+        /// <summary>
+        ///     Polls the engine for audio data on a dedicated thread.
+        ///     Dispatches audio packets to the Unity main thread for consumer playback.
+        /// </summary>
+        internal void AudioDataLoop()
+        {
+            CancellationToken token = cancellationSource.Token;
+            while (!token.IsCancellationRequested)
+                try
+                {
+                    if (!IsConnected)
+                        continue;
+
+                    if (engineProcess.HasExited)
+                    {
+                        logger.Error("It appears that the engine process has quit!");
+                        cancellationSource.Cancel();
+                        return;
+                    }
+
+                    Thread.Sleep(5);
+
+                    if (token.IsCancellationRequested)
+                        return;
+
+                    AudioDataEvent audioData = communicationsManager.GetAudioData();
+                    if (audioData.HasData)
+                    {
+                        ExecuteOnUnity(() => OnAudioData?.Invoke(audioData));
+                    }
+                }
+                catch (TaskCanceledException)
+                {
+                    //Do nothing
+                }
+                catch (Exception ex)
+                {
+                    logger.Error($"Error in audio data loop! {ex}");
+                }
+        }
+
+        private void ExecuteOnUnity(Action action)
+        {
+            syncContext.Post(_ =>
+            {
+                try
+                {
+                    action.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    logger.Error($"Error invoking event on main thread! {ex}");
+                }
+            }, null);
         }
 
         #region FPS
@@ -774,6 +849,47 @@ namespace VoltstroStudios.UnityWebBrowser.Core
         {
             OnInputFocus?.Invoke(focused);
         }
+
+        #region Audio Events
+
+        /// <summary>
+        ///     Invoked when the browser audio stream starts. Provides format metadata.
+        /// </summary>
+        public event OnAudioStreamStarted OnAudioStarted;
+
+        internal void InvokeAudioStreamStarted(int sampleRate, int channels, AudioChannelLayout channelLayout, int framesPerBuffer)
+        {
+            OnAudioStarted?.Invoke(sampleRate, channels, channelLayout, framesPerBuffer);
+        }
+
+        /// <summary>
+        ///     Invoked when the browser audio stream stops.
+        /// </summary>
+        public event OnAudioStreamStopped OnAudioStopped;
+
+        internal void InvokeAudioStreamStopped()
+        {
+            OnAudioStopped?.Invoke();
+        }
+
+        /// <summary>
+        ///     Invoked when an error occurs in the browser audio stream.
+        /// </summary>
+        public event OnAudioStreamError OnAudioError;
+
+        internal void InvokeAudioStreamError(string message)
+        {
+            OnAudioError?.Invoke(message);
+        }
+
+        /// <summary>
+        ///     Invoked when a PCM audio data packet is received from the browser.
+        ///     Contains interleaved float32 PCM data and format metadata.
+        ///     Called on the Unity main thread.
+        /// </summary>
+        public event OnAudioDataReceived OnAudioData;
+
+        #endregion
 
         #endregion
 

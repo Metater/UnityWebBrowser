@@ -120,4 +120,10 @@ internal interface IEngineControls
     /// </summary>
     /// <param name="muted"></param>
     public void AudioMute(bool muted);
+
+    /// <summary>
+    ///     Gets the latest available audio data from the browser audio stream.
+    ///     Returns an empty <see cref="AudioDataEvent"/> (HasData == false) when no new data is available.
+    /// </summary>
+    public AudioDataEvent GetAudioData();
 }

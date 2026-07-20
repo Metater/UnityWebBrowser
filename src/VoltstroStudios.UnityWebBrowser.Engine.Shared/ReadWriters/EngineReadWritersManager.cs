@@ -14,5 +14,6 @@ public static class EngineReadWritersManager
     {
         ReadWriterUtils.AddBaseTypeReadWriters(readerWriterManager);
         readerWriterManager.AddType(new PixelsEventTypeReadWriter());
+        readerWriterManager.AddType(new AudioDataEventTypeReadWriter());
     }
 }

@@ -9,6 +9,7 @@
         <OutDir>../bin/$(Configuration)/</OutDir>
 
         <InvariantGlobalization>true</InvariantGlobalization>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>

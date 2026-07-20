@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using UnityWebBrowser.Engine.Cef.Core;
+using UnityWebBrowser.Engine.Cef.Shared.Browser.Audio;
 using UnityWebBrowser.Engine.Cef.Shared.Browser.Js;
 using UnityWebBrowser.Engine.Cef.Shared.Browser.Messages;
 using UnityWebBrowser.Engine.Cef.Shared.Browser.Popups;
@@ -40,6 +41,7 @@ internal class UwbCefClient : CefClient, IDisposable
     private readonly ProxySettings proxySettings;
     private readonly UwbCefRenderHandler renderHandler;
     private readonly UwbCefRequestHandler requestHandler;
+    private readonly UwbCefAudioHandler audioHandler;
 
     private CefBrowser browser;
     private CefBrowserHost browserHost;
@@ -87,6 +89,8 @@ internal class UwbCefClient : CefClient, IDisposable
         displayHandler = new UwbCefDisplayHandler(this, mainLogger, browserConsoleLogger);
         requestHandler = new UwbCefRequestHandler(proxySettings, ignoreSslErrors, ignoreSslErrorsDomains);
         contextMenuHandler = new UwbCefContextMenuHandler();
+
+        audioHandler = new UwbCefAudioHandler(clientControlsActions, new AudioRingBuffer());
 
         this.ignoreSslErrors = ignoreSslErrors;
         this.ignoreSslErrorsDomains = ignoreSslErrorsDomains;
@@ -146,6 +150,20 @@ internal class UwbCefClient : CefClient, IDisposable
     protected override CefContextMenuHandler GetContextMenuHandler()
     {
         return contextMenuHandler;
+    }
+
+    protected override CefAudioHandler GetAudioHandler()
+    {
+        return audioHandler;
+    }
+
+    /// <summary>
+    ///     Tries to read available audio data from the ring buffer.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool TryReadAudio(out AudioDataEvent audioData)
+    {
+        return audioHandler.RingBuffer.TryRead(out audioData);
     }
 
     #region Engine Events

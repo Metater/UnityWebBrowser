@@ -66,4 +66,20 @@ internal interface IClientControls
     /// </summary>
     /// <param name="executeJsMethod"></param>
     public void ExecuteJsMethod(ExecuteJsMethod executeJsMethod);
+
+    /// <summary>
+    ///     Notifies the client that a browser audio stream has started.
+    /// </summary>
+    public void AudioStreamStarted(int sampleRate, int channels, AudioChannelLayout channelLayout, int framesPerBuffer);
+
+    /// <summary>
+    ///     Notifies the client that the browser audio stream has stopped.
+    /// </summary>
+    public void AudioStreamStopped();
+
+    /// <summary>
+    ///     Notifies the client that an error occurred in the browser audio stream.
+    ///     The stream will be stopped immediately.
+    /// </summary>
+    public void AudioStreamError(string message);
 }

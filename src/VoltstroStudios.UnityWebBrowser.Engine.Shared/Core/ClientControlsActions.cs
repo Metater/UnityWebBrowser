@@ -6,6 +6,7 @@
 using System;
 using VoltstroStudios.UnityWebBrowser.Shared.Core;
 using VoltRpc.Communication;
+using VoltstroStudios.UnityWebBrowser.Shared;
 using VoltstroStudios.UnityWebBrowser.Shared.Js;
 
 #nullable enable
@@ -72,6 +73,24 @@ internal class ClientControlsActions : IClientControls, IDisposable
     {
         if (client is {IsConnected: true})
             clientActions?.ExecuteJsMethod(executeJsMethod);
+    }
+
+    public void AudioStreamStarted(int sampleRate, int channels, AudioChannelLayout channelLayout, int framesPerBuffer)
+    {
+        if (client is {IsConnected: true})
+            clientActions?.AudioStreamStarted(sampleRate, channels, channelLayout, framesPerBuffer);
+    }
+
+    public void AudioStreamStopped()
+    {
+        if (client is {IsConnected: true})
+            clientActions?.AudioStreamStopped();
+    }
+
+    public void AudioStreamError(string message)
+    {
+        if (client is {IsConnected: true})
+            clientActions?.AudioStreamError(message);
     }
 
     public void Dispose()

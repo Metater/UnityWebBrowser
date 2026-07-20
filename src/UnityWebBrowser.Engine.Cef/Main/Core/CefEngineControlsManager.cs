@@ -333,6 +333,14 @@ internal class CefEngineControlsManager : IEngineControls, IDisposable
         cefClient.AudioMute(muted);
     }
 
+    public AudioDataEvent GetAudioData()
+    {
+        if (cefClient.TryReadAudio(out AudioDataEvent audioData))
+            return audioData;
+
+        return default;
+    }
+
     #endregion
 
     #region Destroy
