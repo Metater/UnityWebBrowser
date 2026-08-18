@@ -1,2 +1,4 @@
 *.pdb
 *.xml
+!VoltstroStudios.UnityWebBrowser.Shared.pdb
+!VoltstroStudios.UnityWebBrowser.Shared.xml

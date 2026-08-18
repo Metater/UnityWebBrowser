@@ -1,4 +1,5 @@
 **/*.dll
+!UnityWebBrowser/Plugins/VoltstroStudios.UnityWebBrowser.Shared.dll
 !**/*.prefab
 !**/*.meta
 !Samples~
