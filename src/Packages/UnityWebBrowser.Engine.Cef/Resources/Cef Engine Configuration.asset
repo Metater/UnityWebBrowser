@@ -16,8 +16,8 @@ MonoBehaviour:
   - platform: 0
     engineBaseAppLocation: 
     engineRuntimeLocation: UWB/
-    engineEditorLocation: Packages/dev.voltstro.unitywebbrowser.engine.cef.win.x64/Engine~/
-    engineFileLocation: Packages/dev.voltstro.unitywebbrowser.engine.cef.win.x64/Engine~/
+    engineEditorLocation: UnityWebBrowserPackages/UnityWebBrowser.Engine.Cef.Win-x64/Engine~/
+    engineFileLocation: UnityWebBrowserPackages/UnityWebBrowser.Engine.Cef.Win-x64/Engine~/
   - platform: 1
     engineBaseAppLocation: 
     engineRuntimeLocation: UWB/
