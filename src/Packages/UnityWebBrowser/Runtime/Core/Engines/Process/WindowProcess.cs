@@ -9,13 +9,14 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 
 namespace VoltstroStudios.UnityWebBrowser.Core.Engines.Process
 {
     internal sealed class WindowProcess : IProcess
     {
         private readonly System.Diagnostics.Process process;
-        private readonly IntPtr jobHandle;
+        private readonly SafeFileHandle jobHandle;
 
         public WindowProcess()
         {
@@ -23,6 +24,8 @@ namespace VoltstroStudios.UnityWebBrowser.Core.Engines.Process
             //https://stackoverflow.com/questions/3342941/kill-child-process-when-parent-process-is-killed
             string jobName = "UWBChildProcesses" + Guid.NewGuid().ToString("N");
             jobHandle = CreateJobObject(IntPtr.Zero, jobName);
+            if (jobHandle.IsInvalid)
+                throw new Win32Exception();
             
             JOBOBJECT_BASIC_LIMIT_INFORMATION info = new()
             {
@@ -46,7 +49,9 @@ namespace VoltstroStudios.UnityWebBrowser.Core.Engines.Process
                 if (!SetInformationJobObject(jobHandle, JobObjectInfoType.ExtendedLimitInformation,
                         extendedInfoPtr, (uint)length))
                 {
-                    throw new Win32Exception();
+                    Win32Exception error = new Win32Exception();
+                    jobHandle.Dispose();
+                    throw error;
                 }
             }
             finally
@@ -91,23 +96,31 @@ namespace VoltstroStudios.UnityWebBrowser.Core.Engines.Process
 
         public void Dispose()
         {
-            process.Dispose();
+            try
+            {
+                // Closing the job also ends descendants when the engine has already exited.
+                jobHandle.Dispose();
+            }
+            finally
+            {
+                process.Dispose();
+            }
         }
 
         #region WIN32 Native
         
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-        private static extern IntPtr CreateJobObject(IntPtr lpJobAttributes, string name);
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern SafeFileHandle CreateJobObject(IntPtr lpJobAttributes, string name);
 
-        [DllImport("kernel32.dll")]
-        private static extern bool SetInformationJobObject(IntPtr job, JobObjectInfoType infoType,
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetInformationJobObject(SafeFileHandle job, JobObjectInfoType infoType,
             IntPtr lpJobObjectInfo, uint cbJobObjectInfoLength);
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool AssignProcessToJobObject(IntPtr job, IntPtr process);
+        private static extern bool AssignProcessToJobObject(SafeFileHandle job, IntPtr process);
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool TerminateJobObject(IntPtr job, uint exitCode);
+        private static extern bool TerminateJobObject(SafeFileHandle job, uint exitCode);
 
         public enum JobObjectInfoType
         {
