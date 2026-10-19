@@ -1108,17 +1108,57 @@ namespace VoltstroStudios.UnityWebBrowser.Core
             {
                 lock (resizeLock)
                 {
-                    BrowserTexture.Reinitialize((int)newResolution.Width, (int)newResolution.Height);
-                    textureData = BrowserTexture.GetRawTextureData<byte>();
-
-                    nextTextureData.Dispose();
-                    nextTextureData = new NativeArray<byte>(textureData.ToArray(), Allocator.Persistent);
-                    communicationsManager.pixelsEventTypeReader.SetPixelDataArray(nextTextureData);
+                    ResizeTextureData(newResolution);
                 }
             }
             
             communicationsManager.Resize(newResolution);
             logger.Debug($"Resized to {newResolution}.");
+        }
+
+        /// <summary>
+        ///     Resizes without waiting for an in-flight pixel read. Retry on a later frame when false.
+        /// </summary>
+        public bool TryResize(Resolution newResolution)
+        {
+            CheckIfIsReadyAndConnected();
+            if (!TryResizeTexture(newResolution))
+                return false;
+
+            communicationsManager.Resize(newResolution);
+            logger.Debug($"Resized to {newResolution}.");
+            return true;
+        }
+
+        private bool TryResizeTexture(Resolution newResolution)
+        {
+            if (headless)
+                return true;
+
+            // PixelDataLoop holds this lock while waiting for the engine's IPC response.
+            // The Unity thread must keep running if that response is delayed.
+            if (!Monitor.TryEnter(resizeLock))
+                return false;
+
+            try
+            {
+                ResizeTextureData(newResolution);
+                return true;
+            }
+            finally
+            {
+                Monitor.Exit(resizeLock);
+            }
+        }
+
+        private void ResizeTextureData(Resolution newResolution)
+        {
+            BrowserTexture.Reinitialize((int)newResolution.Width, (int)newResolution.Height);
+            textureData = BrowserTexture.GetRawTextureData<byte>();
+
+            nextTextureData.Dispose();
+            nextTextureData = new NativeArray<byte>(textureData.ToArray(), Allocator.Persistent);
+            communicationsManager.pixelsEventTypeReader.SetPixelDataArray(nextTextureData);
         }
 
         /// <summary>
